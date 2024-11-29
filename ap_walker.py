@@ -11,7 +11,8 @@ def execute_command_on_host(host_ip,
                             password, 
                             enable, 
                             command, 
-                            timeout: float):
+                            timeout: float,
+                            log_file):
     '''
             :Run a command on a network device using SSH
     '''
@@ -62,6 +63,10 @@ def execute_command_on_host(host_ip,
     except Exception as e:
         print(f"Failed to execute command on {host_ip}: {str(e)}")
         
+    # Append the output to a log file
+    with open(log_file, 'w') as file:
+        file.write(output)
+    
     return output
 
 def main():
@@ -77,13 +82,14 @@ def main():
     ap_enable = os.getenv('AP_ENABLE')
     ap_cli = os.getenv('AP_CLI')
     ap_cli_timeout = os.getenv('AP_CLI_TIMEOUT')
+    log_folder = os.getenv('LOG_FOLDER')
 
     if dnac_site_name_file is None:
         raise Exception("Environment variable DNAC_SITE_NAMES_FILE is not set")
     
     with open(dnac_site_name_file, 'r') as file:
         dnac_site_names = json.load(file)
-        print (f"Read DNAC Site names: {dnac_site_names}")
+        print (f"Read DNAC Site names: {json.dumps(dnac_site_names, indent=4)}")
 
     required_vars = {
         'DNAC_IP': dnac_ip,
@@ -97,7 +103,8 @@ def main():
         'AP_PASSWORD': ap_password,
         'AP_ENABLE': ap_enable,
         'AP_CLI': ap_cli,
-        'AP_CLI_TIMEOUT': ap_cli_timeout
+        'AP_CLI_TIMEOUT': ap_cli_timeout,
+        'LOG_FOLDER': log_folder,
     }
 
     for var_name, var_value in required_vars.items():
@@ -111,30 +118,40 @@ def main():
     inventory_module.username = dnac_username
     inventory_module.password = dnac_password
     
+    # initialize the DNAC API
     _dnac_api = inventory_module._login()
+    
+    # iterate over site list specified in site list file
     for site_name in dnac_site_names['sites']:
+        # pull devices associated to the site
         _dnac_hosts = inventory_module._get_hosts_per_site(site_name=site_name,
                                                            family=dnac_device_family)
-        print (f"Site: {site_name}, Hosts: {len(_dnac_hosts)}")
-        _dnac_hosts = inventory_module._get_hosts_per_site(site_name=site_name,
-                                                           family=dnac_device_family)
+        site_index = dnac_site_names['sites'].index(site_name) + 1
+        total_sites = len(dnac_site_names['sites'])
+        print (f"Site [{site_index}/{total_sites}]:\t{site_name},\tHosts: {len(_dnac_hosts)}")
         
         processes = []
-        print ("Spawning processes to connect to APs...")
+        print (f"\tSpawning [{len(_dnac_hosts)}] processes to connect to APs...")
         for host in _dnac_hosts:
             management_ip = host["managementIpAddress"]
+            log_file = os.path.join(log_folder, f"{management_ip}.log")
             p = Process(target=execute_command_on_host, 
                         args=(management_ip, 
                             ap_username, 
                             ap_password, 
                             ap_enable, 
                             ap_cli,
-                            ap_cli_timeout))
+                            ap_cli_timeout,
+                            log_file))
             p.start()
             processes.append(p)
         print (f"Spawned {len(processes)} processes. Awaiting completion")
         for p in processes:
             p.join()
+            if p.exitcode != 0:
+                print(f"Process {p.pid} failed with exit code {p.exitcode}")
+            else:
+                print(f"Process {p.pid} completed successfully")
 
 
 if __name__ == "__main__":
