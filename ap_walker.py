@@ -84,20 +84,13 @@ def main():
     ap_cli_timeout = os.getenv('AP_CLI_TIMEOUT')
     log_folder = os.getenv('LOG_FOLDER')
 
-    if dnac_site_name_file is None:
-        raise Exception("Environment variable DNAC_SITE_NAMES_FILE is not set")
-    
-    with open(dnac_site_name_file, 'r') as file:
-        dnac_site_names = json.load(file)
-        print (f"Read DNAC Site names: {json.dumps(dnac_site_names, indent=4)}")
-
     required_vars = {
         'DNAC_IP': dnac_ip,
         'DNAC_USERNAME': dnac_username,
         'DNAC_PASSWORD': dnac_password,
         'DNAC_VERSION': dnac_version,
         'DNAC_VALIDATE_CERTS': dnac_validate_certs,
-        'DNAC_SITE_NAMES': dnac_site_names,
+        'DNAC_SITE_NAMES_FILE': dnac_site_name_file,
         'DNAC_DEVICE_FAMILY': dnac_device_family,
         'AP_USERNAME': ap_username,
         'AP_PASSWORD': ap_password,
@@ -110,6 +103,12 @@ def main():
     for var_name, var_value in required_vars.items():
         if var_value is None:
             raise Exception(f"Environment variable {var_name} is not set")
+    
+    with open(dnac_site_name_file, 'r') as file:
+        dnac_site_names = json.load(file)
+        print (f"Read DNAC Site names: {json.dumps(dnac_site_names, indent=4)}")
+
+    
  
     inventory_module = dnac_inventory.InventoryModule()
     inventory_module.validate_certs = False
@@ -122,12 +121,15 @@ def main():
     _dnac_api = inventory_module._login()
     
     # iterate over site list specified in site list file
+    total_sites = len(dnac_site_names['sites'])
     for site_name in dnac_site_names['sites']:
+        print ("Processing site: ", site_name)
         # pull devices associated to the site
         _dnac_hosts = inventory_module._get_hosts_per_site(site_name=site_name,
                                                            family=dnac_device_family)
+        print (_dnac_hosts)
         site_index = dnac_site_names['sites'].index(site_name) + 1
-        total_sites = len(dnac_site_names['sites'])
+        
         print (f"Site [{site_index}/{total_sites}]:\t{site_name},\tHosts: {len(_dnac_hosts)}")
         
         processes = []

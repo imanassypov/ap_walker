@@ -52,8 +52,8 @@ class InventoryModule():
             :return devices associated to a given site
         '''
         # Get the site ID for the given site name
-        site_id = self._dnac_api.sites.get_site(name=site_name)
-        hosts = self._dnac_api.devices.get_device_list(site_id=site_id,family=family)
-        return hosts.response
+        site_id = self._dnac_api.sites.get_site_v2(group_name_hierarchy=site_name)['response'][0]['id']
+        hosts = self._dnac_api.sites.get_membership(site_id=site_id, device_family=family, limit=self.api_record_limit)
+        return hosts['device'][0]['response']
         
  
