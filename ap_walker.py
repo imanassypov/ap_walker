@@ -127,7 +127,6 @@ def main():
         # pull devices associated to the site
         _dnac_hosts = inventory_module._get_hosts_per_site(site_name=site_name,
                                                            family=dnac_device_family)
-        print (_dnac_hosts)
         site_index = dnac_site_names['sites'].index(site_name) + 1
         
         print (f"Site [{site_index}/{total_sites}]:\t{site_name},\tHosts: {len(_dnac_hosts)}")

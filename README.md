@@ -22,8 +22,20 @@ To use AP Walker, ensure you have necessary environment variables (refer to samp
 The script will read the list of Sites where the target Access Points are associated to, and execute the CLI against each of the AP's per site. 
 The list of Catalyst Center Sites where the target AP's are associated to is defined in dnac_site_list.json
 
+Prepare a tftp server, and place the required AP image into tftpboot folder.
+To figure out the version of AP sofware image matching to the target Wireless Lan Controller image, use the following reference:
+https://www.cisco.com/c/en/us/td/docs/wireless/compatibility/matrix/compatibility-matrix.html
+
 ```bash
 python ap_walker.py
+```
+
+## Test results
+After the execution of the script the following is the snippet of show version from one of the APs
+```bash
+AP Running Image     : 17.6.4.56
+Primary Boot Image   : 17.6.4.56
+Backup Boot Image    : 17.9.4.27
 ```
 
 ## Contributing
